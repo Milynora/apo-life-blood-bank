@@ -23,11 +23,16 @@ DB_PASSWORD="${DB_PASSWORD}"
 SESSION_DRIVER="${SESSION_DRIVER}"
 CACHE_DRIVER="${CACHE_DRIVER}"
 
-CLOUDINARY_URL="${CLOUDINARY_URL}"
+CLOUDINARY_URL=cloudinary://${CLOUDINARY_API_KEY}:${CLOUDINARY_API_SECRET}@${CLOUDINARY_CLOUD_NAME}
 EOF
+
+# Debug - verify Cloudinary URL was written
+echo ">>> CLOUDINARY_URL written:"
+grep CLOUDINARY_URL /var/www/html/.env
 
 # Clear and cache config
 php artisan config:clear
+php artisan cache:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
