@@ -62,35 +62,10 @@ class ProfileController extends Controller
 
     $donor = auth()->user()->donor;
 
-    // Debug: check what Cloudinary config is seeing
     $cloudinaryUrl = config('cloudinary.cloud_url');
-    \Log::error('CLOUDINARY CONFIG: ' . var_export($cloudinaryUrl, true));
+    \Log::error('CLOUDINARY URL VALUE: ' . $cloudinaryUrl);
 
-    if (!$cloudinaryUrl) {
-        return back()->with('error', 'Cloudinary not configured. URL is null.');
-    }
-
-    try {
-        if ($donor->avatar_public_id) {
-            cloudinary()->destroy($donor->avatar_public_id);
-        }
-
-        $result = cloudinary()->upload($request->file('avatar')->getRealPath(), [
-            'folder'        => 'apo-life/avatars',
-            'resource_type' => 'image',
-        ]);
-
-        $donor->update([
-            'avatar'           => $result->getSecurePath(),
-            'avatar_public_id' => $result->getPublicId(),
-        ]);
-
-        return back()->with('success', 'Profile photo updated.');
-
-    } catch (\Exception $e) {
-        \Log::error('Cloudinary upload failed: ' . $e->getMessage());
-        return back()->with('error', 'Debug: ' . $e->getMessage());
-    }
+    return back()->with('error', 'URL: ' . $cloudinaryUrl);
 }
 
     public function updateEmail(Request $request)
