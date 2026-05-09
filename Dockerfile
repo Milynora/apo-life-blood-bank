@@ -122,9 +122,10 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framewor
 
 
 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 10000
 
-
-
-CMD ["apache2-foreground"]
+CMD ["/usr/local/bin/docker-entrypoint.sh"]
 
