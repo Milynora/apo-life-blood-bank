@@ -62,13 +62,19 @@ class ProfileController extends Controller
 
     $donor = auth()->user()->donor;
 
+    // Debug: check what Cloudinary config is seeing
+    $cloudinaryUrl = config('cloudinary.cloud_url');
+    \Log::error('CLOUDINARY CONFIG: ' . var_export($cloudinaryUrl, true));
+
+    if (!$cloudinaryUrl) {
+        return back()->with('error', 'Cloudinary not configured. URL is null.');
+    }
+
     try {
-        // Delete old avatar if exists
         if ($donor->avatar_public_id) {
             cloudinary()->destroy($donor->avatar_public_id);
         }
 
-        // Upload new avatar
         $result = cloudinary()->upload($request->file('avatar')->getRealPath(), [
             'folder'        => 'apo-life/avatars',
             'resource_type' => 'image',
@@ -83,7 +89,7 @@ class ProfileController extends Controller
 
     } catch (\Exception $e) {
         \Log::error('Cloudinary upload failed: ' . $e->getMessage());
-        return back()->with('error', 'Image upload failed: ' . $e->getMessage());
+        return back()->with('error', 'Debug: ' . $e->getMessage());
     }
 }
 
