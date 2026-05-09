@@ -62,44 +62,28 @@ class ProfileController extends Controller
 
     $donor = auth()->user()->donor;
 
-    // Delete old avatar from Cloudinary if exists
-    if ($donor->avatar_public_id) {
-        try {
-            \Cloudinary\Cloudinary::instance()->uploadApi()->destroy($donor->avatar_public_id);
-        } catch (\Exception $e) {
-            // Log but don't block upload
-            \Log::warning('Cloudinary delete failed: ' . $e->getMessage());
-        }
-    }
-
-    // Upload new avatar
     try {
-        $uploadedFile = $request->file('avatar');
-        
-        $result = \Cloudinary\Cloudinary::instance()->uploadApi()->upload(
-            $uploadedFile->getRealPath(),
-            [
-                'folder'         => 'apo-life/avatars',
-                'resource_type'  => 'image',
-                'transformation' => [
-                    'width'   => 400,
-                    'height'  => 400,
-                    'crop'    => 'fill',
-                    'gravity' => 'face',
-                ],
-            ]
-        );
+        // Delete old avatar if exists
+        if ($donor->avatar_public_id) {
+            cloudinary()->destroy($donor->avatar_public_id);
+        }
+
+        // Upload new avatar
+        $result = cloudinary()->upload($request->file('avatar')->getRealPath(), [
+            'folder'        => 'apo-life/avatars',
+            'resource_type' => 'image',
+        ]);
 
         $donor->update([
-            'avatar'           => $result['secure_url'],
-            'avatar_public_id' => $result['public_id'],
+            'avatar'           => $result->getSecurePath(),
+            'avatar_public_id' => $result->getPublicId(),
         ]);
 
         return back()->with('success', 'Profile photo updated.');
 
     } catch (\Exception $e) {
         \Log::error('Cloudinary upload failed: ' . $e->getMessage());
-        return back()->with('error', 'Image upload failed. Please try again.');
+        return back()->with('error', 'Image upload failed: ' . $e->getMessage());
     }
 }
 
@@ -136,7 +120,7 @@ class ProfileController extends Controller
 
     if ($donor->avatar_public_id) {
         try {
-            \Cloudinary\Cloudinary::instance()->uploadApi()->destroy($donor->avatar_public_id);
+            cloudinary()->destroy($donor->avatar_public_id);
         } catch (\Exception $e) {
             \Log::warning('Cloudinary delete failed: ' . $e->getMessage());
         }
