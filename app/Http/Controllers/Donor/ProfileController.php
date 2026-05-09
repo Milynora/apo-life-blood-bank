@@ -55,26 +55,30 @@ class ProfileController extends Controller
     }
 
     public function updateAvatar(Request $request)
-    {
-        $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-        ]);
+{
+    $request->validate([
+        'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+    ]);
 
-        $donor = auth()->user()->donor;
+    $donor = auth()->user()->donor;
 
-        // Delete old avatar if exists
-        if ($donor->avatar && file_exists(public_path($donor->avatar))) {
-            unlink(public_path($donor->avatar));
-        }
-
-        $file     = $request->file('avatar');
-        $filename = 'avatar_' . $donor->donor_id . '_' . time() . '.' . $file->getClientOriginalExtension();
-        $file->move(public_path('images/avatars'), $filename);
-
-        $donor->update(['avatar' => 'images/avatars/' . $filename]);
-
-        return back()->with('success', 'Profile photo updated.');
+    // Delete old avatar from Cloudinary if exists
+    if ($donor->avatar_public_id) {
+        cloudinary()->destroy($donor->avatar_public_id);
     }
+
+    // Upload new avatar to Cloudinary
+    $result = cloudinary()->upload($request->file('avatar')->getRealPath(), [
+        'folder' => 'apo-life/avatars',
+    ]);
+
+    $donor->update([
+        'avatar'           => $result->getSecurePath(),
+        'avatar_public_id' => $result->getPublicId(),
+    ]);
+
+    return back()->with('success', 'Profile photo updated.');
+}
 
     public function updateEmail(Request $request)
     {
@@ -107,9 +111,12 @@ class ProfileController extends Controller
 {
     $donor = $request->user()->donor;
 
-    if ($donor->avatar) {
-        \Storage::disk('public')->delete($donor->avatar);
-        $donor->update(['avatar' => null]);
+    if ($donor->avatar_public_id) {
+        cloudinary()->destroy($donor->avatar_public_id);
+        $donor->update([
+            'avatar'           => null,
+            'avatar_public_id' => null,
+        ]);
     }
 
     return back()->with('success', 'Profile photo removed.');
