@@ -62,10 +62,43 @@ class ProfileController extends Controller
 
     $donor = auth()->user()->donor;
 
-    $cloudinaryUrl = config('cloudinary.cloud_url');
-    \Log::error('CLOUDINARY URL VALUE: ' . $cloudinaryUrl);
+    try {
+        $cloudinary = new \Cloudinary\Cloudinary([
+            'cloud' => [
+                'cloud_name'  => env('CLOUDINARY_CLOUD_NAME'),
+                'api_key'     => env('CLOUDINARY_API_KEY'),
+                'api_secret'  => env('CLOUDINARY_API_SECRET'),
+            ],
+            'url' => [
+                'secure' => true,
+            ],
+        ]);
 
-    return back()->with('error', 'URL: ' . $cloudinaryUrl);
+        // Delete old avatar if exists
+        if ($donor->avatar_public_id) {
+            $cloudinary->uploadApi()->destroy($donor->avatar_public_id);
+        }
+
+        // Upload new avatar
+        $result = $cloudinary->uploadApi()->upload(
+            $request->file('avatar')->getRealPath(),
+            [
+                'folder'        => 'apo-life/avatars',
+                'resource_type' => 'image',
+            ]
+        );
+
+        $donor->update([
+            'avatar'           => $result['secure_url'],
+            'avatar_public_id' => $result['public_id'],
+        ]);
+
+        return back()->with('success', 'Profile photo updated.');
+
+    } catch (\Exception $e) {
+        \Log::error('Cloudinary upload failed: ' . $e->getMessage());
+        return back()->with('error', 'Upload failed: ' . $e->getMessage());
+    }
 }
 
     public function updateEmail(Request $request)
@@ -101,7 +134,16 @@ class ProfileController extends Controller
 
     if ($donor->avatar_public_id) {
         try {
-            cloudinary()->destroy($donor->avatar_public_id);
+            $cloudinary = new \Cloudinary\Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+            ]);
+
+            $cloudinary->uploadApi()->destroy($donor->avatar_public_id);
+
         } catch (\Exception $e) {
             \Log::warning('Cloudinary delete failed: ' . $e->getMessage());
         }
