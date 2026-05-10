@@ -154,6 +154,6 @@ class ProfileController extends Controller
         ]);
     }
 
-    return back()->with('success', 'Profile photo removed.');
+    return redirect()->route('donor.profile.edit')->with('success', 'Profile photo removed.');
 }
 }
