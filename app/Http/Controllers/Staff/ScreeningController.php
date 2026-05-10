@@ -11,93 +11,116 @@ use Carbon\Carbon;
 class ScreeningController extends Controller
 {
     public function index(Request $request)
-    {
-        $screenings = Screening::with(['donor.user', 'donor.bloodType', 'staff', 'appointment'])
-            ->when($request->eligibility, fn($q) => $q->where('eligibility_status', $request->eligibility))
-            ->when($request->date,        fn($q) => $q->whereDate('screening_date', $request->date))
-            ->latest('screening_date')
-            ->paginate(15)
-            ->withQueryString();
+{
+    $screenings = Screening::with(['donor.user', 'donor.bloodType', 'staff', 'appointment'])
+        ->when($request->search, fn($q) => $q->whereHas('donor.user', fn($q) =>
+            $q->where('name', 'like', '%' . $request->search . '%')
+        ))
+        ->when($request->eligibility, fn($q) => $q->where('eligibility_status', $request->eligibility))
+        ->when($request->date,        fn($q) => $q->whereDate('screening_date', $request->date))
+        ->latest('screening_date')
+        ->paginate(15)
+        ->withQueryString();
 
-            $stats = [
-    'total'            => Screening::count(),
-    'fit'              => Screening::where('eligibility_status', EligibilityStatus::Fit)->count(),
-    'unfit'            => Screening::where('eligibility_status', EligibilityStatus::Unfit)->count(),
-];
+    $stats = [
+        'total' => Screening::count(),
+        'fit'   => Screening::where('eligibility_status', EligibilityStatus::Fit)->count(),
+        'unfit' => Screening::where('eligibility_status', EligibilityStatus::Unfit)->count(),
+    ];
 
-        return view('staff.screenings.index', compact('screenings', 'stats'));
-    }
+    return view('staff.screenings.index', compact('screenings', 'stats'));
+}
 
     public function create(Request $request)
-    {
-        // Appointments not yet screened
-        $appointments = Appointment::with('donor.user')
-            ->where('status', 'approved')
-            ->whereDoesntHave('screening')
-            ->get();
+{
+    $appointments = Appointment::with('donor.user')
+        ->where('status', 'approved')
+        ->whereDoesntHave('screening')
+        ->get();
 
-        // Only donors eligible for screening:
-        // - No successful donation in the last 56 days
-        $eligibleDonorIds = Donor::with(['user', 'bloodType'])
-            ->get()
-            ->filter(function ($donor) {
-                $lastDonation = $donor->donations()
-                    ->where('status', 'successful')
-                    ->latest('donation_date')
-                    ->first();
+    $allDonors = Donor::with(['user', 'bloodType'])->get();
 
-                if (!$lastDonation) return true; // Never donated — eligible
+    $donors = $allDonors->map(function ($donor) {
+        $lastDonation = $donor->donations()
+            ->where('status', 'successful')
+            ->latest('donation_date')
+            ->first();
 
-                $daysSince = (int) $lastDonation->donation_date->diffInDays(now());
-                return $daysSince >= 56;
-            });
+        $screenedTodayPassed = $donor->screenings()
+            ->whereDate('screening_date', today())
+            ->where('eligibility_status', 'fit')
+            ->exists();
 
-        // All donors — for display purposes (ineligible shown as disabled)
-        $allDonors = Donor::with(['user', 'bloodType'])->get();
+        $screenedTodayUnfit = $donor->screenings()
+            ->whereDate('screening_date', today())
+            ->where('eligibility_status', 'unfit')
+            ->exists();
 
-        // Mark each donor with eligibility info
-        $donors = $allDonors->map(function ($donor) {
-            $lastDonation = $donor->donations()
-                ->where('status', 'successful')
-                ->latest('donation_date')
-                ->first();
+        if ($lastDonation) {
+            $daysSince = (int) $lastDonation->donation_date->diffInDays(now());
+            $donor->screening_eligible  = $daysSince >= 56;
+            $donor->days_since_donation = $daysSince;
+            $donor->days_until_eligible = max(0, 56 - $daysSince);
+        } else {
+            $donor->screening_eligible  = true;
+            $donor->days_since_donation = null;
+            $donor->days_until_eligible = 0;
+        }
 
-            if ($lastDonation) {
-                $daysSince = (int) $lastDonation->donation_date->diffInDays(now());
-                $donor->screening_eligible = $daysSince >= 56;
-                $donor->days_since_donation = $daysSince;
-                $donor->days_until_eligible = max(0, 56 - $daysSince);
-            } else {
-                $donor->screening_eligible  = true;
-                $donor->days_since_donation = null;
-                $donor->days_until_eligible = 0;
-            }
+        $donor->screened_today_passed = $screenedTodayPassed;
+        $donor->screened_today_unfit  = $screenedTodayUnfit;
 
-            return $donor;
-        });
+        // sort_group: 0 = eligible, 1 = screened today unfit, hidden otherwise
+        if ($screenedTodayPassed) {
+            $donor->sort_group = 99; // exclude
+        } elseif (!$donor->screening_eligible) {
+            $donor->sort_group = 99; // exclude (56-day rule)
+        } elseif ($screenedTodayUnfit) {
+            $donor->sort_group = 1; // show — can rescreen
+        } else {
+            $donor->sort_group = 0; // eligible
+        }
 
-        $selectedDonor       = $request->donor_id       ? Donor::with(['user','bloodType'])->find($request->donor_id) : null;
-        $selectedAppointment = $request->appointment_id ? Appointment::find($request->appointment_id) : null;
+        return $donor;
+    });
 
-        return view('staff.screenings.create', compact(
-            'donors', 'appointments', 'selectedDonor', 'selectedAppointment'
-        ));
-    }
+    $screenedTodayDonors = Screening::with(['donor.user'])
+        ->whereDate('screening_date', today())
+        ->where('eligibility_status', 'fit')
+        ->get();
+
+    $selectedDonor       = $request->donor_id       ? Donor::with(['user','bloodType'])->find($request->donor_id) : null;
+    $selectedAppointment = $request->appointment_id ? Appointment::find($request->appointment_id) : null;
+
+    return view('staff.screenings.create', compact(
+        'donors', 'appointments', 'selectedDonor', 'selectedAppointment', 'screenedTodayDonors'
+    ));
+}
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'donor_id'         => ['required', 'exists:donors,donor_id'],
-            'appointment_id'   => ['nullable', 'exists:appointments,appointment_id'],
-            'date'             => ['required', 'date', 'before_or_equal:today'],
-            'blood_pressure'   => ['nullable', 'string', 'max:20'],
-            'hemoglobin_level' => ['nullable', 'numeric', 'min:0', 'max:30'],
-            'weight'           => ['nullable', 'numeric', 'min:30', 'max:300'],
-            'remarks'          => ['nullable', 'string', 'max:1000'],
-        ]);
+{
+    $request->validate([
+        'donor_id'         => ['required', 'exists:donors,donor_id'],
+        'appointment_id'   => ['nullable', 'exists:appointments,appointment_id'],
+        'date'             => ['required', 'date', 'before_or_equal:today'],
+        'blood_pressure'   => ['required', 'string', 'max:20', 'regex:/^\d{2,3}\/\d{2,3}$/'],
+        'hemoglobin_level' => ['required', 'numeric', 'min:0', 'max:30'],
+        'weight'           => ['required', 'numeric', 'min:30', 'max:300'],
+        'remarks'          => ['nullable', 'string', 'max:1000'],
+    ]);
 
-        $eligibility = 'fit';
-        $reasons     = [];
+    // Prevent duplicate screening for same donor today
+    $alreadyScreened = Screening::where('donor_id', $request->donor_id)
+        ->whereDate('screening_date', today())
+        ->exists();
+
+    if ($alreadyScreened) {
+        return back()->with('error', 'This donor has already been screened today. Use the edit function to make corrections.')
+            ->withInput();
+    }
+
+    $eligibility = 'fit';
+    $reasons     = [];
 
         // Hemoglobin check
         if ($request->filled('hemoglobin_level') && $request->hemoglobin_level < 12.5) {
@@ -198,9 +221,9 @@ $screening = Screening::create([
 {
     $request->validate([
         'date'             => ['required', 'date', 'before_or_equal:today'],
-        'blood_pressure'   => ['nullable', 'string', 'max:20'],
-        'hemoglobin_level' => ['nullable', 'numeric', 'min:0', 'max:30'],
-        'weight'           => ['nullable', 'numeric', 'min:30', 'max:300'],
+        'blood_pressure'   => ['required', 'string', 'max:20', 'regex:/^\d{2,3}\/\d{2,3}$/'],
+        'hemoglobin_level' => ['required', 'numeric', 'min:0', 'max:30'],
+        'weight'           => ['required', 'numeric', 'min:30', 'max:300'],
         'remarks'          => ['nullable', 'string', 'max:1000'],
     ]);
 

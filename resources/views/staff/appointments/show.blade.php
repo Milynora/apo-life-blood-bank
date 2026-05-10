@@ -31,80 +31,69 @@
     {{-- Hero banner --}}
 <div class="dash-card" x-data>
 
-  {{-- Row 1: Identity + status --}}
-  <div style="padding:0.85rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; border-bottom:1px solid rgba(0,0,0,0.06);">
-    <div style="display:flex; align-items:center; gap:0.85rem;">
-      <div style="width:38px; height:38px; border-radius:50%; overflow:hidden; background:linear-gradient(135deg,var(--primary),#e94560); display:flex; align-items:center; justify-content:center; font-size:0.95rem; font-weight:800; color:#fff; flex-shrink:0; border:2px solid #fff; outline:2px solid rgba(192,57,43,0.15); box-shadow:0 2px 8px rgba(192,57,43,0.25);">
-    @if($appointment->donor->avatar)
+  {{-- Row 1: Identity + profile --}}
+<div style="padding:0.85rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; border-bottom:1px solid rgba(0,0,0,0.06);">
+  <div style="display:flex; align-items:center; gap:0.85rem;">
+    <div style="width:38px; height:38px; border-radius:50%; overflow:hidden; background:linear-gradient(135deg,var(--primary),#e94560); display:flex; align-items:center; justify-content:center; font-size:0.95rem; font-weight:800; color:#fff; flex-shrink:0; border:2px solid #fff; outline:2px solid rgba(192,57,43,0.15); box-shadow:0 2px 8px rgba(192,57,43,0.25);">
+      @if($appointment->donor->avatar)
         <img src="{{ asset($appointment->donor->avatar) }}" alt="{{ $appointment->donor->name }}" style="width:100%; height:100%; object-fit:cover;"/>
-    @else
+      @else
         {{ strtoupper(substr($appointment->donor->name, 0, 1)) }}
-    @endif
+      @endif
+    </div>
+    <div>
+      <div style="font-size:0.9rem; font-weight:700; color:#1a1a2e;">{{ $appointment->donor->name }}</div>
+      <div style="font-size:0.75rem; color:#888; margin-top:1px;">{{ $appointment->donor->user->email }}</div>
+    </div>
+  </div>
+  <a href="{{ route($routePrefix . '.donors.show', $appointment->donor) }}"
+    style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid rgba(41,128,185,0.3); background:rgba(41,128,185,0.08); color:#2980B9; text-decoration:none; font-size:0.78rem; font-weight:600; transition:all 0.2s;"
+    onmouseover="this.style.background='rgba(41,128,185,0.18)'"
+    onmouseout="this.style.background='rgba(41,128,185,0.08)'">
+    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+    Profile
+  </a>
 </div>
-      <div>
-        <div style="font-size:0.9rem; font-weight:700; color:#1a1a2e;">{{ $appointment->donor->name }}</div>
-        <div style="font-size:0.75rem; color:#888; margin-top:1px; display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
-          <span>{{ $appointment->donor->user->email }}</span>
-          @if($appointment->donor->bloodType)
-            <span>·</span>
-            <x-blood-type-badge :type="$appointment->donor->bloodType->type_name"/>
-          @endif
-          <span>· Age {{ $appointment->donor->date_of_birth->age }}</span>
-        </div>
-      </div>
-    </div>
+
+{{-- Row 2: Date/time/notes + status + action buttons --}}
+<div style="padding:0.75rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem;">
+  <div style="font-size:0.8rem; color:#888; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+    <svg width="13" height="13" fill="none" stroke="#bbb" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    <span>{{ $appointment->appointment_date->format('M d, Y') }} · {{ $appointment->appointment_date->format('h:i A') }} · {{ $appointment->appointment_date->format('l') }}</span>
+    @if($appointment->notes)
+      <span style="color:#ddd;">·</span>
+      <span style="color:#aaa; font-style:italic;">{{ Str::limit($appointment->notes, 50) }}</span>
+    @endif
+  </div>
+  <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
     <x-status-badge :status="$appointment->status->value"/>
+    @if($appointment->status->value === 'pending')
+      <button @click="$dispatch('open-modal','approve-appt')"
+        style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid rgba(39,174,96,0.3); background:rgba(39,174,96,0.08); color:#27AE60; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:var(--font-body); transition:all 0.2s;"
+        onmouseover="this.style.background='rgba(39,174,96,0.18)'"
+        onmouseout="this.style.background='rgba(39,174,96,0.08)'">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
+        Approve
+      </button>
+      <button @click="$dispatch('open-modal','reject-appt')"
+        style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid rgba(243,156,18,0.3); background:rgba(243,156,18,0.08); color:#E67E22; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:var(--font-body); transition:all 0.2s;"
+        onmouseover="this.style.background='rgba(243,156,18,0.18)'"
+        onmouseout="this.style.background='rgba(243,156,18,0.08)'">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        Reject
+      </button>
+    @endif
+    @if($appointment->status->value === 'approved')
+      <button @click="$dispatch('open-modal','cancel-appt')"
+        style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid rgba(192,57,43,0.3); background:rgba(192,57,43,0.08); color:#E74C3C; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:var(--font-body); transition:all 0.2s;"
+        onmouseover="this.style.background='rgba(192,57,43,0.18)'"
+        onmouseout="this.style.background='rgba(192,57,43,0.08)'">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        Cancel Appointment
+      </button>
+    @endif
   </div>
-
-  {{-- Row 2: Date/time/notes + actions --}}
-  <div style="padding:0.75rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem;">
-    <div style="font-size:0.8rem; color:#888; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-      <svg width="13" height="13" fill="none" stroke="#bbb" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      <span>{{ $appointment->appointment_date->format('M d, Y') }} · {{ $appointment->appointment_date->format('h:i A') }} · {{ $appointment->appointment_date->format('l') }}</span>
-      @if($appointment->notes)
-        <span style="color:#ddd;">·</span>
-        <span style="color:#aaa; font-style:italic;">{{ Str::limit($appointment->notes, 50) }}</span>
-      @endif
-    </div>
-    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-
-      <a href="{{ route($routePrefix . '.donors.show', $appointment->donor) }}"
-        style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid rgba(41,128,185,0.3); background:rgba(41,128,185,0.08); color:#2980B9; text-decoration:none; font-size:0.78rem; font-weight:600; transition:all 0.2s;"
-        onmouseover="this.style.background='rgba(41,128,185,0.18)'"
-        onmouseout="this.style.background='rgba(41,128,185,0.08)'">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-        Profile
-      </a>
-
-      @if($appointment->status->value === 'pending')
-        <button @click="$dispatch('open-modal','approve-appt')"
-          style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid rgba(39,174,96,0.3); background:rgba(39,174,96,0.08); color:#27AE60; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:var(--font-body); transition:all 0.2s;"
-          onmouseover="this.style.background='rgba(39,174,96,0.18)'"
-          onmouseout="this.style.background='rgba(39,174,96,0.08)'">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
-          Approve
-        </button>
-        <button @click="$dispatch('open-modal','reject-appt')"
-          style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid rgba(243,156,18,0.3); background:rgba(243,156,18,0.08); color:#E67E22; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:var(--font-body); transition:all 0.2s;"
-          onmouseover="this.style.background='rgba(243,156,18,0.18)'"
-          onmouseout="this.style.background='rgba(243,156,18,0.08)'">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
-          Reject
-        </button>
-      @endif
-
-      @if($appointment->status->value === 'approved')
-        <button @click="$dispatch('open-modal','cancel-appt')"
-          style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid rgba(192,57,43,0.3); background:rgba(192,57,43,0.08); color:#E74C3C; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:var(--font-body); transition:all 0.2s;"
-          onmouseover="this.style.background='rgba(192,57,43,0.18)'"
-          onmouseout="this.style.background='rgba(192,57,43,0.08)'">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
-          Cancel
-        </button>
-      @endif
-
-    </div>
-  </div>
+</div>
 
   {{-- Modals --}}
   @if($appointment->status->value === 'pending')

@@ -23,6 +23,9 @@ class AppointmentController extends Controller
         ->update(['status' => AppointmentStatus::NoShow]);
 
     $appointments = Appointment::with(['donor.user', 'donor.bloodType'])
+        ->when($request->search, fn($q) => $q->whereHas('donor.user', fn($q) =>
+            $q->where('name', 'like', '%' . $request->search . '%')
+        ))
         ->when($request->status, fn($q) => $q->where('status', $request->status))
         ->when($request->date,   fn($q) => $q->whereDate('appointment_date', $request->date))
         ->latest('appointment_date')
@@ -50,9 +53,11 @@ class AppointmentController extends Controller
     public function create(Request $request)
     {
         $donors = Donor::with(['user', 'bloodType'])
-            ->whereHas('user', fn($q) => $q->where('status', 'active'))
-            ->orderBy('donor_id')
-            ->get();
+    ->whereHas('user', fn($q) => $q->where('status', 'active'))
+    ->join('users', 'donors.user_id', '=', 'users.id')
+    ->orderBy('users.name')
+    ->select('donors.*')
+    ->get();
 
         $selectedDonor = $request->donor_id
             ? Donor::with(['user', 'bloodType'])->find($request->donor_id)

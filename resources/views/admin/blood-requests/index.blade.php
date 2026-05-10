@@ -32,51 +32,77 @@
   </div>
 
   {{-- Filter bar --}}
-  <div class="dash-card" style="margin-bottom:1.5rem; padding:1rem 1.25rem;"
-    x-data="{
-      status: '{{ request('status', '') }}',
-      blood_type: '{{ request('blood_type', '') }}',
-      updateResults() {
-        const url = new URL(window.location.href);
-        url.searchParams.set('status', this.status);
-        url.searchParams.set('blood_type', this.blood_type);
-        url.searchParams.delete('page');
-        fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-          .then(r => r.text())
-          .then(html => {
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            document.getElementById('requests-table-wrapper').innerHTML =
-              doc.getElementById('requests-table-wrapper').innerHTML;
-            window.history.replaceState({}, '', url.toString());
-          });
-      }
-    }">
-    <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
+<div class="dash-card" style="margin-bottom:1.5rem; padding:1rem 1.25rem;"
+  x-data="{
+    search: '{{ request('search', '') }}',
+    status: '{{ request('status', '') }}',
+    blood_type: '{{ request('blood_type', '') }}',
+    loading: false,
+    updateResults() {
+      this.loading = true;
+      const url = new URL(window.location.href);
+      url.searchParams.set('search', this.search);
+      url.searchParams.set('status', this.status);
+      url.searchParams.set('blood_type', this.blood_type);
+      url.searchParams.delete('page');
+      fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          document.getElementById('requests-table-wrapper').innerHTML =
+            doc.getElementById('requests-table-wrapper').innerHTML;
+          window.history.replaceState({}, '', url.toString());
+          this.loading = false;
+        });
+    }
+  }">
+  <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
 
-      {{-- Status --}}
-      <select x-model="status" @change="updateResults()"
-        class="form-input form-input-light" style="min-width:160px; max-width:200px;">
-        <option value="">All Status</option>
-        <option value="pending">Pending</option>
-        <option value="approved">Approved</option>
-        <option value="partially_fulfilled">Partially Fulfilled</option>
-        <option value="fulfilled">Fulfilled</option>
-        <option value="rejected">Rejected</option>
-      </select>
-
-      {{-- Blood Type --}}
-      <select x-model="blood_type" @change="updateResults()"
-        class="form-input form-input-light" style="min-width:150px; max-width:180px;">
-        <option value="">All Blood Types</option>
-        @foreach(\App\Models\BloodType::all() as $bt)
-          <option value="{{ $bt->blood_type_id }}" {{ request('blood_type') == $bt->blood_type_id ? 'selected' : '' }}>
-            {{ $bt->type_name }}
-          </option>
-        @endforeach
-      </select>
-
+    {{-- Search --}}
+    <div style="position:relative; flex:2; min-width:220px;">
+      <span style="position:absolute; left:0.9rem; top:50%; transform:translateY(-50%); display:flex; align-items:center; pointer-events:none;">
+        <svg x-show="!loading" width="15" height="15" fill="none" stroke="#bbb" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <svg x-show="loading" width="15" height="15" fill="none" stroke="#C0392B" stroke-width="2" viewBox="0 0 24 24"
+          style="animation:requests-spin 0.7s linear infinite;">
+          <path stroke-linecap="round" d="M4 12a8 8 0 018-8"/>
+        </svg>
+      </span>
+      <input type="text" x-model="search"
+        class="form-input form-input-light" style="padding-left:2.6rem; width:100%;"
+        placeholder="Search hospital name…"
+        @input.debounce.350ms="updateResults()"/>
     </div>
+
+    {{-- Status --}}
+    <select x-model="status" @change="updateResults()"
+      class="form-input form-input-light" style="min-width:160px; max-width:200px;">
+      <option value="">All Status</option>
+      <option value="pending">Pending</option>
+      <option value="approved">Approved</option>
+      <option value="partially_fulfilled">Partially Fulfilled</option>
+      <option value="fulfilled">Fulfilled</option>
+      <option value="rejected">Rejected</option>
+    </select>
+
+    {{-- Blood Type --}}
+    <select x-model="blood_type" @change="updateResults()"
+      class="form-input form-input-light" style="min-width:150px; max-width:180px;">
+      <option value="">All Blood Types</option>
+      @foreach(\App\Models\BloodType::all() as $bt)
+        <option value="{{ $bt->blood_type_id }}" {{ request('blood_type') == $bt->blood_type_id ? 'selected' : '' }}>
+          {{ $bt->type_name }}
+        </option>
+      @endforeach
+    </select>
+
   </div>
+</div>
+
+<style>
+  @keyframes requests-spin { to { transform: rotate(360deg); } }
+</style>
 
   {{-- Table --}}
   <div id="requests-table-wrapper">

@@ -15,18 +15,21 @@ class BloodRequestController extends Controller
     public function __construct(protected RequestFulfillmentService $fulfillmentService) {}
 
     public function index(Request $request)
-    {
-        $bloodTypes = BloodType::all();
+{
+    $bloodTypes = BloodType::all();
 
-        $requests = BloodRequest::with(['hospital', 'bloodType'])
-            ->when($request->status,     fn($q) => $q->where('status', $request->status))
-            ->when($request->blood_type, fn($q) => $q->where('blood_type_id', $request->blood_type))
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
+    $requests = BloodRequest::with(['hospital', 'bloodType'])
+        ->when($request->search,     fn($q) => $q->whereHas('hospital', fn($q) =>
+            $q->where('hospital_name', 'like', '%' . $request->search . '%')
+        ))
+        ->when($request->status,     fn($q) => $q->where('status', $request->status))
+        ->when($request->blood_type, fn($q) => $q->where('blood_type_id', $request->blood_type))
+        ->latest()
+        ->paginate(15)
+        ->withQueryString();
 
-        return view('admin.blood-requests.index', compact('requests', 'bloodTypes'));
-    }
+    return view('admin.blood-requests.index', compact('requests', 'bloodTypes'));
+}
 
     public function show(BloodRequest $bloodRequest)
     {

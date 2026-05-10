@@ -16,10 +16,10 @@
       <h1 class="page-title">Appointments</h1>
       <p class="page-subtitle">Review and manage donor appointment requests.</p>
     </div>
-    <a href="{{ route($routePrefix . '.appointments.create') }}" class="btn btn-dash-primary btn-sm">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14m7-7H5"/></svg>
-      Make Appointment
-    </a>
+    <a href="{{ route($routePrefix . '.appointments.create') }}" class="btn btn-dash-primary">
+  <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14m7-7H5"/></svg>
+  Schedule Appointment
+</a>
   </div>
 
   <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:1.25rem; margin-bottom:1.75rem;">
@@ -32,49 +32,71 @@
 </div>
 
   {{-- Filter bar --}}
-  <div class="dash-card" style="margin-bottom:1.5rem; padding:1rem 1.25rem;"
-    x-data="{
-  status: '{{ request('status','') }}',
-  date: '{{ request('date','') }}',
-  updateResults() {
-    const url = new URL(window.location.href);
-    url.searchParams.set('status', this.status);
-    url.searchParams.set('date', this.date);
-    url.searchParams.delete('page');
-    fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-      .then(r => r.text())
-      .then(html => {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        document.getElementById('appointments-table-wrapper').innerHTML =
-          doc.getElementById('appointments-table-wrapper').innerHTML;
-        window.history.replaceState({}, '', url.toString());
-      });
-  }
-}">
-    <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
+<div class="dash-card" style="margin-bottom:1.5rem; padding:1rem 1.25rem;"
+  x-data="{
+    search: '{{ request('search', '') }}',
+    status: '{{ request('status','') }}',
+    date: '{{ request('date','') }}',
+    loading: false,
+    updateResults() {
+      this.loading = true;
+      const url = new URL(window.location.href);
+      url.searchParams.set('search', this.search);
+      url.searchParams.set('status', this.status);
+      url.searchParams.set('date', this.date);
+      url.searchParams.delete('page');
+      fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          document.getElementById('appointments-table-wrapper').innerHTML =
+            doc.getElementById('appointments-table-wrapper').innerHTML;
+          window.history.replaceState({}, '', url.toString());
+          this.loading = false;
+        });
+    }
+  }">
+  <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
 
-      {{-- Status --}}
-      <select x-model="status" @change="updateResults()"
-        class="form-input form-input-light" style="min-width:150px; max-width:200px;">
-        <option value="">All Status</option>
-        <option value="pending">Pending</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-        <option value="cancelled">Cancelled</option>
-        <option value="completed">Completed</option>
-        <option value="no_show">No Show</option>
-      </select>
-
-      {{-- Date --}}
-<input type="date" x-model="date" @change="updateResults()"
-  class="form-input form-input-light" style="min-width:175px; max-width:210px;"/>
-
+    {{-- Search --}}
+    <div style="position:relative; flex:2; min-width:220px;">
+      <span style="position:absolute; left:0.9rem; top:50%; transform:translateY(-50%); display:flex; align-items:center; pointer-events:none;">
+        <svg x-show="!loading" width="15" height="15" fill="none" stroke="#bbb" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <svg x-show="loading" width="15" height="15" fill="none" stroke="#C0392B" stroke-width="2" viewBox="0 0 24 24"
+          style="animation:appt-spin 0.7s linear infinite;">
+          <path stroke-linecap="round" d="M4 12a8 8 0 018-8"/>
+        </svg>
+      </span>
+      <input type="text" x-model="search"
+        class="form-input form-input-light" style="padding-left:2.6rem; width:100%;"
+        placeholder="Search donor name…"
+        @input.debounce.350ms="updateResults()"/>
     </div>
-  </div>
 
-  <style>
-    @keyframes appt-spin { to { transform: rotate(360deg); } }
-  </style>
+    {{-- Status --}}
+    <select x-model="status" @change="updateResults()"
+      class="form-input form-input-light" style="min-width:150px; max-width:200px;">
+      <option value="">All Status</option>
+      <option value="pending">Pending</option>
+      <option value="approved">Approved</option>
+      <option value="rejected">Rejected</option>
+      <option value="cancelled">Cancelled</option>
+      <option value="completed">Completed</option>
+      <option value="no_show">No Show</option>
+    </select>
+
+    {{-- Date --}}
+    <input type="date" x-model="date" @change="updateResults()"
+      class="form-input form-input-light" style="min-width:175px; max-width:210px;"/>
+
+  </div>
+</div>
+
+<style>
+  @keyframes appt-spin { to { transform: rotate(360deg); } }
+</style>
 
   {{-- Table --}}
   <div id="appointments-table-wrapper">

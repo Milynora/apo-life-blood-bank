@@ -40,44 +40,57 @@
           @csrf
 
           {{-- Donor select --}}
-          <div class="form-group">
-            <label class="form-label">Select Donor <span style="color:#E74C3C;">*</span></label>
-            <select name="donor_id" required class="form-input form-input-light"
-              x-model="selectedDonorId"
-              @change="window.location.href = '{{ route($routePrefix . '.appointments.create') }}?donor_id=' + $event.target.value">
-              <option value="">Select a registered donor</option>
-              @foreach($donors as $d)
-                <option value="{{ $d->donor_id }}"
-                  {{ old('donor_id', request('donor_id')) == $d->donor_id ? 'selected' : '' }}>
-                  {{ $d->user->name }}
-                </option>
-              @endforeach
-            </select>
-            @error('donor_id')<div class="form-error">{{ $message }}</div>@enderror
-          </div>
+<div class="form-group" style="position:relative;"
+  x-data="{
+    open: false,
+    search: '',
+    selectedId: '{{ old('donor_id', request('donor_id', '')) }}',
+    selectedName: '{{ $selectedDonor ? $selectedDonor->user->name : '' }}',
+    donors: {{ Js::from($donors->map(fn($d) => ['id' => $d->donor_id, 'name' => $d->user->name, 'blood_type' => $d->bloodType?->type_name ?? 'N/A'])) }},
+    get filtered() {
+      if (!this.search) return this.donors;
+      return this.donors.filter(d => d.name.toLowerCase().includes(this.search.toLowerCase()));
+    },
+    select(donor) {
+  this.selectedId   = donor.id;
+  this.selectedName = donor.name;
+  this.search       = donor.name;
+  this.open         = false;
+}
+  }"
+  @click.outside="open = false"
+  x-init="search = selectedName">
 
-          {{-- Selected donor preview --}}
-          @if($selectedDonor)
-            <div style="background:rgba(41,128,185,0.05); border:1px solid rgba(41,128,185,0.2); border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem; display:flex; align-items:center; gap:1rem;">
-              <div class="avatar-initials" style="width:42px; height:42px; font-size:0.9rem; flex-shrink:0;">
-                {{ strtoupper(substr($selectedDonor->user->name, 0, 1)) }}
-              </div>
-              <div style="flex:1;">
-                <div style="font-weight:700; font-size:0.9rem; color:#1a1a2e;">{{ $selectedDonor->user->name }}</div>
-                <div style="font-size:0.78rem; color:#888; margin-top:0.15rem; display:flex; align-items:center; gap:0.65rem; flex-wrap:wrap;">
-                  @if($selectedDonor->bloodType)
-                    <x-blood-type-badge :type="$selectedDonor->bloodType->type_name"/>
-                  @endif
-                  <span>Age {{ $selectedDonor->date_of_birth->age }}</span>
-                  <span>{{ $selectedDonor->donations()->count() }} donation(s)</span>
-                </div>
-              </div>
-              <a href="{{ route($routePrefix . '.donors.show', $selectedDonor) }}"
-                style="font-size:0.75rem; color:var(--primary); text-decoration:none; font-weight:600; white-space:nowrap;">
-                View profile →
-              </a>
-            </div>
-          @endif
+  <label class="form-label">Select Donor <span style="color:#E74C3C;">*</span></label>
+
+  <input type="hidden" name="donor_id" :value="selectedId" required/>
+
+  <input type="text" x-model="search"
+  @focus="open = true"
+  @input="open = true; selectedId = ''; if (search === '') { selectedName = ''; }"
+  @keydown.escape="open = false"
+  @blur="if (!selectedId) { search = ''; selectedName = ''; }"
+  placeholder="Type to search donor…"
+  class="form-input form-input-light"
+  autocomplete="off"/>
+
+  {{-- Dropdown --}}
+  <div x-show="open && filtered.length > 0" x-transition
+    style="position:absolute; z-index:50; width:100%; background:#fff; border:1.5px solid var(--border-light); border-radius:12px; margin-top:4px; box-shadow:0 8px 24px rgba(0,0,0,0.1); overflow:hidden;">
+    <div style="max-height:220px; overflow-y:auto;">
+      <template x-for="donor in filtered" :key="donor.id">
+  <div @mousedown.prevent="select(donor)"
+    style="padding:0.65rem 1rem; cursor:pointer; font-size:0.875rem; transition:background 0.15s;"
+    onmouseover="this.style.background='rgba(0,0,0,0.04)'"
+    onmouseout="this.style.background='transparent'">
+    <span x-text="donor.name" style="color:#1a1a2e;"></span>
+  </div>
+</template>
+    </div>
+  </div>
+
+  @error('donor_id')<div class="form-error">{{ $message }}</div>@enderror
+</div>
 
           {{-- Date & time --}}
           <div class="form-group">
@@ -110,20 +123,20 @@
           {{-- Info note --}}
           <div class="alert alert-info" style="margin-bottom:1.25rem;">
   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-  <span style="font-size:0.82rem;">Inform the donor of their scheduled appointment and remind them of the eligibility requirements prior to their visit.</span>
+  <span style="font-size:0.82rem;">Inform the donor of their appointment and remind them of the eligibility requirements.</span>
 </div>
 
           {{-- Buttons --}}
-          <div style="display:flex; gap:0.85rem;">
-            <a href="{{ route($routePrefix . '.appointments.index') }}"
-              style="flex:1; text-align:center; padding:0.7rem; border-radius:10px; border:1.5px solid var(--border-light); background:#fff; color:#555; text-decoration:none; font-size:0.875rem; font-weight:600; display:flex; align-items:center; justify-content:center;">
-              Cancel
-            </a>
-            <button type="submit" class="btn btn-dash-primary" style="flex:2; justify-content:center; border-radius:10px; padding:0.7rem;">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-              Confirm Appointment
-            </button>
-          </div>
+<div style="display:flex; gap:0.85rem; justify-content:flex-end;">
+  <a href="{{ route($routePrefix . '.appointments.index') }}"
+    style="padding:0.7rem 1.4rem; border-radius:10px; border:1.5px solid var(--border-light); background:#fff; color:#555; text-decoration:none; font-size:0.875rem; font-weight:600; display:inline-flex; align-items:center;">
+    Cancel
+  </a>
+  <button type="submit" class="btn btn-dash-primary" style="border-radius:10px; padding:0.7rem 1.75rem;">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    Confirm Appointment
+  </button>
+</div>
 
         </form>
       </div>
@@ -164,12 +177,11 @@
       <div class="dash-card">
         <div class="dash-card-header"><h3 class="dash-card-title">Donor Eligibility Reminder</h3></div>
         <div class="dash-card-body" style="padding:1.25rem 1.5rem;">
-          <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <div style="display:flex; flex-direction:column; gap:0.35rem;">
             @foreach([
               'Age 18–65 years old',
               'Weight at least 50 kg',
               'No donation in the past 56 days',
-              'Hemoglobin ≥ 12.5 g/dL',
               'No active illness or fever',
             ] as $item)
               <div style="display:flex; align-items:center; gap:0.65rem; font-size:0.82rem; color:#555;">
