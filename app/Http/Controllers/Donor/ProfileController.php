@@ -147,12 +147,13 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             \Log::warning('Cloudinary delete failed: ' . $e->getMessage());
         }
-
-        $donor->update([
-            'avatar'           => null,
-            'avatar_public_id' => null,
-        ]);
     }
+
+    // Always clear both fields regardless
+    $donor->update([
+        'avatar'           => null,
+        'avatar_public_id' => null,
+    ]);
 
     return redirect()->route('donor.profile.edit')->with('success', 'Profile photo removed.');
 }
