@@ -32,84 +32,87 @@
   <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(45deg); width:200px; height:200px; background:rgba(233,69,96,0.03); border-radius:30px; pointer-events:none;"></div>
 
   <div style="padding:1.75rem 2rem; display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
-       
-        {{-- Avatar wrapper --}}
-<div style="position:relative; flex-shrink:0;" x-data="avatarPreview()">
 
-  {{-- Avatar upload form --}}
-  <form method="POST" action="{{ route('donor.profile.avatar') }}"
-    enctype="multipart/form-data" id="avatarForm">
-    @csrf
+    {{-- Avatar wrapper --}}
+    <div style="position:relative; flex-shrink:0;" x-data="avatarPreview()">
 
-    {{-- Avatar circle --}}
-    <div style="width:72px; height:72px; border-radius:50%; overflow:hidden; background:linear-gradient(135deg,var(--primary),#e94560); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:1.5rem; font-weight:800; color:#fff; box-shadow:0 6px 20px rgba(192,57,43,0.3); border:3px solid #fff; outline:2px solid rgba(192,57,43,0.15); cursor:pointer;"
-      @click="$refs.avatarInput.click()">
-      <template x-if="preview">
-        <img :src="preview" style="width:100%; height:100%; object-fit:cover;"/>
-      </template>
-      <template x-if="!preview">
+      {{-- Avatar upload form --}}
+      <form method="POST" action="{{ route('donor.profile.avatar') }}"
+        enctype="multipart/form-data" id="avatarForm">
+        @csrf
+
+        {{-- Avatar circle --}}
+        <div style="width:72px; height:72px; border-radius:50%; overflow:hidden; background:linear-gradient(135deg,var(--primary),#e94560); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:1.5rem; font-weight:800; color:#fff; box-shadow:0 6px 20px rgba(192,57,43,0.3); border:3px solid #fff; outline:2px solid rgba(192,57,43,0.15); cursor:pointer;"
+          @click="$refs.avatarInput.click()">
+          <template x-if="preview">
+            <img :src="preview" style="width:100%; height:100%; object-fit:cover;"/>
+          </template>
+          <template x-if="!preview">
+            @if($donor->avatar)
+              <img src="{{ $donor->avatar }}" style="width:100%; height:100%; object-fit:cover;"/>
+            @else
+              <span>{{ strtoupper(substr($donor->name, 0, 1)) }}</span>
+            @endif
+          </template>
+        </div>
+
+        {{-- Camera overlay --}}
+        <div style="position:absolute; bottom:0; right:0; width:24px; height:24px; border-radius:50%; background:var(--primary); border:2px solid #fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(192,57,43,0.4);"
+          @click.stop="$refs.avatarInput.click()">
+          <svg width="11" height="11" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+
+        {{-- Hidden file input --}}
+        <input type="file" name="avatar" accept="image/jpg,image/jpeg,image/png,image/webp"
+          x-ref="avatarInput" style="display:none;"
+          @change="onFileChange($event)"/>
+
+        <button type="submit" style="display:none;" x-ref="submitBtn"></button>
+      </form>
+
+      {{-- Remove photo button — separate form --}}
+      @if($donor->avatar)
+        <form method="POST" action="{{ route('donor.profile.avatar.remove') }}"
+          style="position:absolute; top:-6px; left:-6px;">
+          @csrf @method('DELETE')
+          <button type="submit"
+            title="Remove photo"
+            style="width:24px; height:24px; border-radius:50%; background:#fff; border:1.5px solid rgba(192,57,43,0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.15); padding:0;"
+            onmouseover="this.style.background='rgba(192,57,43,0.1)'"
+            onmouseout="this.style.background='#fff'">
+            <svg width="11" height="11" fill="none" stroke="#E74C3C" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </form>
+      @endif
+
+    </div>{{-- end avatar wrapper --}}
+
+    <div style="flex:1;">
+      <h2 style="font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:#1a1a2e; margin-bottom:0.3rem;">
+        {{ $donor->name }}
+      </h2>
+      <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
+        <span style="font-size:0.82rem; color:#888;">{{ auth()->user()->email }}</span>
+      </div>
+      <div style="font-size:0.72rem; color:#888; margin-top:0.4rem;">
+        Click your photo to change it
         @if($donor->avatar)
-          <img src="{{ $donor->avatar }}" style="width:100%; height:100%; object-fit:cover;"/>
-        @else
-          <span>{{ strtoupper(substr($donor->name, 0, 1)) }}</span>
+          · <span style="color:#E74C3C;">Click × to remove</span>
         @endif
-      </template>
+      </div>
     </div>
 
-    {{-- Camera overlay --}}
-    <div style="position:absolute; bottom:0; right:0; width:24px; height:24px; border-radius:50%; background:var(--primary); border:2px solid #fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(192,57,43,0.4);"
-      @click.stop="$refs.avatarInput.click()">
-      <svg width="11" height="11" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24">
-        <path stroke-linecap="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-      </svg>
+    <div style="text-align:right;">
+      <div style="font-size:0.72rem; color:#888; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.3rem;">Member since</div>
+      <div style="font-size:0.9rem; font-weight:600; color:#1a1a2e;">{{ auth()->user()->created_at->format('M Y') }}</div>
     </div>
 
-    {{-- Hidden file input --}}
-    <input type="file" name="avatar" accept="image/jpg,image/jpeg,image/png,image/webp"
-      x-ref="avatarInput" style="display:none;"
-      @change="onFileChange($event)"/>
-
-    <button type="submit" style="display:none;" x-ref="submitBtn"></button>
-  </form>
-
-  {{-- Remove photo button — separate form --}}
-  @if($donor->avatar)
-    <form method="POST" action="{{ route('donor.profile.avatar.remove') }}"
-      style="position:absolute; top:-6px; left:-6px;">
-      @csrf @method('DELETE')
-      <button type="submit"
-        title="Remove photo"
-        style="width:24px; height:24px; border-radius:50%; background:#fff; border:1.5px solid rgba(192,57,43,0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.15); padding:0;"
-        onmouseover="this.style.background='rgba(192,57,43,0.1)'"
-        onmouseout="this.style.background='#fff'">
-        <svg width="11" height="11" fill="none" stroke="#E74C3C" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
-    </form>
-  @endif
-
-</div>
-
-<div style="flex:1;">
-  <h2 style="font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:#1a1a2e; margin-bottom:0.3rem;">
-    {{ $donor->name }}
-  </h2>
-  <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
-    <span style="font-size:0.82rem; color:#888;">{{ auth()->user()->email }}</span>
-  </div>
-  <div style="font-size:0.72rem; color:#888; margin-top:0.4rem;">
-    Click your photo to change it
-    @if($donor->avatar)
-      · <span style="color:#E74C3C;">Click × to remove</span>
-    @endif
-  </div>
-</div>
-
-<div style="text-align:right;">
-  <div style="font-size:0.72rem; color:#888; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.3rem;">Member since</div>
-  <div style="font-size:0.9rem; font-weight:600; color:#1a1a2e;">{{ auth()->user()->created_at->format('M Y') }}</div>
-</div>
+  </div>{{-- end padding div --}}
+</div>{{-- end dash-card --}}
 
     {{-- Tab navigation --}}
     <div class="tab-nav" style="margin-bottom:1.5rem;">
