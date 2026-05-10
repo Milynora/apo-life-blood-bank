@@ -51,7 +51,7 @@ class ProfileController extends Controller
         $donor->update($donorData);
         $user->update(['name' => $request->name]);
 
-        return back()->with('success', 'Profile updated successfully.');
+        return back()->with('success', 'Profile uploaded successfully.');
     }
 
     public function updateAvatar(Request $request)
@@ -93,7 +93,7 @@ class ProfileController extends Controller
             'avatar_public_id' => $result['public_id'],
         ]);
 
-        return back()->with('success', 'Profile photo updated.');
+        return back()->with('success', 'Profile photo updated successfully.');
 
     } catch (\Exception $e) {
         \Log::error('Cloudinary upload failed: ' . $e->getMessage());
@@ -155,6 +155,6 @@ class ProfileController extends Controller
         'avatar_public_id' => null,
     ]);
 
-    return redirect()->route('donor.profile.edit')->with('success', 'Profile photo removed.');
+    return redirect()->route('donor.profile.edit')->with('success', 'Profile photo removed successfully.');
 }
 }
