@@ -1415,3 +1415,8 @@ table.data-table {
 }
 
 [x-cloak] { display: none !important; }
+
+.dash-card {
+  position: relative;
+  z-index: 1;
+}

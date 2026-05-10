@@ -233,21 +233,31 @@
 </header>
 
 <style>
+
+  .app-content {
+  position: relative;
+  z-index: 1;
+}
+
+.app-main-wrapper {
+  isolation: isolate;
+}
+
   .app-topbar {
-    height: 56px;
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 2px 12px rgba(192,57,43,0.07), 0 1px 3px rgba(0,0,0,0.05);
-    display: flex;
-    align-items: center;
-    padding: 0 1.1rem;
-    position: sticky;
-    top: 0.85rem;
-    z-index: 50;
-    gap: 0.65rem;
-    margin-bottom: 1.25rem;
-    border: 1px solid rgba(192,57,43,0.07);
-  }
+  height: 56px;
+  background: #f5f0f0;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(192,57,43,0.07), 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  padding: 0 1.1rem;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(192,57,43,0.07);
+}
 
   .topbar-logo {
     display: flex;
